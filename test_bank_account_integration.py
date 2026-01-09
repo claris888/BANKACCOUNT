@@ -61,14 +61,20 @@ class TestBankAccountDepositWithMockNotification(unittest.TestCase):
 
     def test_deposit_notification_not_called_for_zero_amount(self):
         """Test that notification is not called when deposit amount is zero"""
-        self.account.deposit(0)
+        try:
+            self.account.deposit(0)
+        except ValueError:
+            pass
         
         # Verify send_notification was NOT called
         self.mock_notification_system.send_notification.assert_not_called()
 
     def test_deposit_notification_not_called_for_negative_amount(self):
         """Test that notification is not called when deposit amount is negative"""
-        self.account.deposit(-50)
+        try:
+            self.account.deposit(-50)
+        except ValueError:
+            pass
         
         # Verify send_notification was NOT called
         self.mock_notification_system.send_notification.assert_not_called()
@@ -81,10 +87,10 @@ class TestBankAccountDepositWithMockNotification(unittest.TestCase):
         self.mock_notification_system.send_notification.assert_called_once()
 
     def test_deposit_returns_false_and_no_notification_call(self):
-        """Test that failed deposit returns False and doesn't call notification"""
-        result = self.account.deposit(-100)
+        """Test that failed deposit raises exception and doesn't call notification"""
+        with self.assertRaises(ValueError):
+            self.account.deposit(-100)
         
-        self.assertFalse(result)
         self.mock_notification_system.send_notification.assert_not_called()
 
     def test_multiple_deposits_call_notification_multiple_times(self):
@@ -168,8 +174,14 @@ class TestBankAccountDepositWithRealNotificationSystem(unittest.TestCase):
 
     def test_failed_deposit_no_notification(self):
         """Test that failed deposits don't create notifications"""
-        self.account.deposit(0)
-        self.account.deposit(-50)
+        try:
+            self.account.deposit(0)
+        except ValueError:
+            pass
+        try:
+            self.account.deposit(-50)
+        except ValueError:
+            pass
         
         notifications = self.notification_system.get_notifications()
         self.assertEqual(len(notifications), 0)
@@ -177,9 +189,15 @@ class TestBankAccountDepositWithRealNotificationSystem(unittest.TestCase):
     def test_mixed_successful_and_failed_deposits(self):
         """Test notifications only for successful deposits"""
         self.account.deposit(50)    # Success
-        self.account.deposit(-20)   # Fail
+        try:
+            self.account.deposit(-20)   # Fail
+        except ValueError:
+            pass
         self.account.deposit(30)    # Success
-        self.account.deposit(0)     # Fail
+        try:
+            self.account.deposit(0)     # Fail
+        except ValueError:
+            pass
         self.account.deposit(25)    # Success
         
         notifications = self.notification_system.get_notifications()
@@ -328,7 +346,10 @@ class TestDepositTransactionHistory(unittest.TestCase):
     def test_failed_deposit_not_in_history(self):
         """Test that failed deposits are not recorded in history"""
         self.account.deposit(50)
-        self.account.deposit(-20)
+        try:
+            self.account.deposit(-20)
+        except ValueError:
+            pass
         self.account.deposit(30)
         
         history = self.account.get_transaction_history()
@@ -446,6 +467,330 @@ class TestDepositNotificationAssertions(unittest.TestCase):
         
         account.deposit(25)
         self.assertEqual(mock_notif.send_notification.call_count, 1)
+
+
+class TestDepositInvalidAmounts(unittest.TestCase):
+    """Test cases for invalid deposit amounts and exception handling"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_notification_system = Mock(spec=NotificationSystem)
+        self.account = BankAccount(100, self.mock_notification_system)
+
+    def test_deposit_negative_amount_raises_value_error(self):
+        """Test that depositing negative amount raises ValueError"""
+        with self.assertRaises(ValueError):
+            self.account.deposit(-50)
+
+    def test_deposit_zero_amount_raises_value_error(self):
+        """Test that depositing zero raises ValueError"""
+        with self.assertRaises(ValueError):
+            self.account.deposit(0)
+
+    def test_deposit_negative_amount_no_notification(self):
+        """Test that notification is not called for negative deposit"""
+        try:
+            self.account.deposit(-50)
+        except ValueError:
+            pass
+        
+        self.mock_notification_system.send_notification.assert_not_called()
+
+    def test_deposit_zero_amount_no_notification(self):
+        """Test that notification is not called for zero deposit"""
+        try:
+            self.account.deposit(0)
+        except ValueError:
+            pass
+        
+        self.mock_notification_system.send_notification.assert_not_called()
+
+    def test_deposit_negative_amount_balance_unchanged(self):
+        """Test that balance is unchanged after failed negative deposit"""
+        initial_balance = self.account.get_balance()
+        
+        try:
+            self.account.deposit(-50)
+        except ValueError:
+            pass
+        
+        self.assertEqual(self.account.get_balance(), initial_balance)
+
+    def test_deposit_zero_amount_balance_unchanged(self):
+        """Test that balance is unchanged after failed zero deposit"""
+        initial_balance = self.account.get_balance()
+        
+        try:
+            self.account.deposit(0)
+        except ValueError:
+            pass
+        
+        self.assertEqual(self.account.get_balance(), initial_balance)
+
+    def test_deposit_string_raises_type_error(self):
+        """Test that depositing string raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit("50")
+
+    def test_deposit_string_no_notification(self):
+        """Test that notification is not called for string deposit"""
+        try:
+            self.account.deposit("50")
+        except TypeError:
+            pass
+        
+        self.mock_notification_system.send_notification.assert_not_called()
+
+    def test_deposit_string_balance_unchanged(self):
+        """Test that balance is unchanged after string deposit"""
+        initial_balance = self.account.get_balance()
+        
+        try:
+            self.account.deposit("50")
+        except TypeError:
+            pass
+        
+        self.assertEqual(self.account.get_balance(), initial_balance)
+
+    def test_deposit_none_raises_type_error(self):
+        """Test that depositing None raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit(None)
+
+    def test_deposit_none_no_notification(self):
+        """Test that notification is not called for None deposit"""
+        try:
+            self.account.deposit(None)
+        except TypeError:
+            pass
+        
+        self.mock_notification_system.send_notification.assert_not_called()
+
+    def test_deposit_none_balance_unchanged(self):
+        """Test that balance is unchanged after None deposit"""
+        initial_balance = self.account.get_balance()
+        
+        try:
+            self.account.deposit(None)
+        except TypeError:
+            pass
+        
+        self.assertEqual(self.account.get_balance(), initial_balance)
+
+    def test_deposit_list_raises_type_error(self):
+        """Test that depositing list raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit([50])
+
+    def test_deposit_dict_raises_type_error(self):
+        """Test that depositing dict raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit({'amount': 50})
+
+    def test_deposit_tuple_raises_type_error(self):
+        """Test that depositing tuple raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit((50,))
+
+    def test_deposit_boolean_raises_value_error(self):
+        """Test that depositing False (0) raises ValueError"""
+        with self.assertRaises(ValueError):
+            self.account.deposit(False)
+
+    def test_deposit_true_succeeds(self):
+        """Test that depositing True (1) succeeds as valid number"""
+        result = self.account.deposit(True)
+        self.assertTrue(result)
+        self.assertEqual(self.account.get_balance(), 101)
+
+    def test_deposit_nan_raises_value_error(self):
+        """Test that depositing NaN raises ValueError"""
+        import math
+        with self.assertRaises(ValueError):
+            self.account.deposit(math.nan)
+
+    def test_deposit_nan_no_notification(self):
+        """Test that notification is not called for NaN deposit"""
+        import math
+        try:
+            self.account.deposit(math.nan)
+        except ValueError:
+            pass
+        
+        self.mock_notification_system.send_notification.assert_not_called()
+
+    def test_deposit_infinity_raises_value_error(self):
+        """Test that depositing infinity raises ValueError"""
+        import math
+        with self.assertRaises(ValueError):
+            self.account.deposit(math.inf)
+
+    def test_deposit_negative_infinity_raises_value_error(self):
+        """Test that depositing negative infinity raises ValueError"""
+        import math
+        with self.assertRaises(ValueError):
+            self.account.deposit(-math.inf)
+
+    def test_deposit_infinity_no_notification(self):
+        """Test that notification is not called for infinity deposit"""
+        import math
+        try:
+            self.account.deposit(math.inf)
+        except ValueError:
+            pass
+        
+        self.mock_notification_system.send_notification.assert_not_called()
+
+    def test_deposit_empty_string_raises_type_error(self):
+        """Test that depositing empty string raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit("")
+
+    def test_deposit_space_string_raises_type_error(self):
+        """Test that depositing space string raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit("  ")
+
+    def test_deposit_invalid_amount_no_history_entry(self):
+        """Test that transaction history is not updated for invalid deposit"""
+        initial_history_length = len(self.account.get_transaction_history())
+        
+        try:
+            self.account.deposit(-50)
+        except ValueError:
+            pass
+        
+        self.assertEqual(len(self.account.get_transaction_history()), initial_history_length)
+
+    def test_deposit_type_error_message(self):
+        """Test that TypeError has descriptive message"""
+        with self.assertRaises(TypeError) as context:
+            self.account.deposit("50")
+        
+        self.assertIn("number", str(context.exception).lower())
+
+    def test_deposit_value_error_message_negative(self):
+        """Test that ValueError has descriptive message for negative amount"""
+        with self.assertRaises(ValueError) as context:
+            self.account.deposit(-50)
+        
+        self.assertIn("positive", str(context.exception).lower())
+
+    def test_deposit_value_error_message_zero(self):
+        """Test that ValueError has descriptive message for zero"""
+        with self.assertRaises(ValueError) as context:
+            self.account.deposit(0)
+        
+        self.assertIn("positive", str(context.exception).lower())
+
+    def test_deposit_complex_number_raises_type_error(self):
+        """Test that depositing complex number raises TypeError"""
+        with self.assertRaises(TypeError):
+            self.account.deposit(50 + 10j)
+
+    def test_multiple_invalid_deposits_no_notifications(self):
+        """Test that multiple invalid deposits don't trigger notifications"""
+        invalid_amounts = [-50, 0, "50", None, [], {}]
+        
+        for amount in invalid_amounts:
+            try:
+                self.account.deposit(amount)
+            except (ValueError, TypeError):
+                pass
+        
+        self.mock_notification_system.send_notification.assert_not_called()
+
+    def test_invalid_then_valid_deposit(self):
+        """Test that valid deposit works after invalid attempt"""
+        try:
+            self.account.deposit(-50)
+        except ValueError:
+            pass
+        
+        # Valid deposit should still work and call notification
+        result = self.account.deposit(50)
+        self.assertTrue(result)
+        self.mock_notification_system.send_notification.assert_called_once()
+        self.assertEqual(self.account.get_balance(), 150)
+
+    def test_deposit_very_small_positive_amount(self):
+        """Test that very small positive amount is accepted"""
+        result = self.account.deposit(0.001)
+        self.assertTrue(result)
+        self.assertAlmostEqual(self.account.get_balance(), 100.001, places=3)
+
+    def test_deposit_scientific_notation(self):
+        """Test that scientific notation works for positive values"""
+        result = self.account.deposit(1e2)  # 100
+        self.assertTrue(result)
+        self.assertEqual(self.account.get_balance(), 200)
+
+    def test_deposit_scientific_notation_negative(self):
+        """Test that scientific notation for negative values raises ValueError"""
+        with self.assertRaises(ValueError):
+            self.account.deposit(-1e2)  # -100
+
+    def test_deposit_exception_preserves_account_state(self):
+        """Test that account state is completely preserved after exception"""
+        initial_balance = self.account.get_balance()
+        initial_history = len(self.account.get_transaction_history())
+        
+        # Make a valid deposit first
+        self.account.deposit(25)
+        
+        # Attempt invalid deposit
+        try:
+            self.account.deposit(-100)
+        except ValueError:
+            pass
+        
+        # Balance should reflect only the valid deposit
+        self.assertEqual(self.account.get_balance(), initial_balance + 25)
+        self.assertEqual(len(self.account.get_transaction_history()), initial_history + 1)
+
+
+class TestDepositExceptionWithRealNotification(unittest.TestCase):
+    """Test exception handling with real NotificationSystem"""
+
+    def setUp(self):
+        """Set up test fixtures with real notification system"""
+        self.notification_system = NotificationSystem()
+        self.account = BankAccount(100, self.notification_system)
+
+    def test_invalid_deposit_no_notification_entry(self):
+        """Test that no notification is created for invalid deposit"""
+        try:
+            self.account.deposit(-50)
+        except ValueError:
+            pass
+        
+        notifications = self.notification_system.get_notifications()
+        self.assertEqual(len(notifications), 0)
+
+    def test_mix_valid_and_invalid_deposits(self):
+        """Test mixing valid and invalid deposits"""
+        self.account.deposit(50)
+        
+        try:
+            self.account.deposit(-25)
+        except ValueError:
+            pass
+        
+        self.account.deposit(30)
+        
+        try:
+            self.account.deposit("invalid")
+        except TypeError:
+            pass
+        
+        self.account.deposit(20)
+        
+        # Should have 3 notifications (only for valid deposits)
+        notifications = self.notification_system.get_notifications()
+        self.assertEqual(len(notifications), 3)
+        
+        # Check balance
+        self.assertEqual(self.account.get_balance(), 200)
 
 
 if __name__ == '__main__':

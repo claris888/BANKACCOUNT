@@ -33,22 +33,47 @@ class BankAccount:
         self.transaction_history = []
     
     def deposit(self, amount):
-        """Deposit money into the account and notify"""
-        if amount > 0:
-            self.balance += amount
-            self.transaction_history.append({
-                'type': 'deposit',
-                'amount': amount,
-                'balance_after': self.balance
-            })
+        """Deposit money into the account and notify
+        
+        Args:
+            amount: The amount to deposit (must be positive number)
             
-            # Send notification if notification system is available
-            if self.notification_system:
-                message = f"Deposit of ${amount:.2f} successful. New balance: ${self.balance:.2f}"
-                self.notification_system.send_notification(message, 'deposit')
+        Returns:
+            True if deposit was successful
             
-            return True
-        return False
+        Raises:
+            TypeError: If amount is not a number
+            ValueError: If amount is not positive (zero or negative)
+        """
+        # Validate type
+        if not isinstance(amount, (int, float)):
+            raise TypeError(f"Deposit amount must be a number, got {type(amount).__name__}")
+        
+        # Check for NaN or infinity
+        if isinstance(amount, float):
+            import math
+            if math.isnan(amount):
+                raise ValueError("Deposit amount cannot be NaN")
+            if math.isinf(amount):
+                raise ValueError("Deposit amount cannot be infinity")
+        
+        # Validate value
+        if amount <= 0:
+            raise ValueError(f"Deposit amount must be positive, got {amount}")
+        
+        self.balance += amount
+        self.transaction_history.append({
+            'type': 'deposit',
+            'amount': amount,
+            'balance_after': self.balance
+        })
+        
+        # Send notification if notification system is available
+        if self.notification_system:
+            message = f"Deposit of ${amount:.2f} successful. New balance: ${self.balance:.2f}"
+            self.notification_system.send_notification(message, 'deposit')
+        
+        return True
     
     def withdraw(self, amount):
         """Withdraw money from the account and notify"""
